@@ -4,22 +4,27 @@ import { Route } from "react-router-dom";
 import Game from "./game";
 import Button from "@material-ui/core/Button";
 import { ref } from "../../firebase/main";
-import {PATH_CONST} from "../../constants/firebase";
+import { PATH_CONST } from "../../constants/firebase";
 
 class Home extends React.Component {
   state = {
     games: [],
+    isGameOwner: false,
   };
 
   componentDidMount() {
-    const gameList = ref.child(PATH_CONST.INTRUDERS);
+    // List all available game room
+    const gameList = ref.child(PATH_CONST.DICTIONARY);
 
     gameList
       .on("value", (snapshot) => {
         const val = snapshot.val();
-        const games = Object.keys(val).map((key) => {
-          return { ...val[key], key };
-        });
+
+        const games = val
+          ? Object.keys(val).map((key) => {
+              return { ...val[key], key };
+            })
+          : [];
 
         this.setState((state) => {
           return { ...state, games };
@@ -38,7 +43,10 @@ class Home extends React.Component {
           the page that is shown when no topic is selected */}
         <Switch>
           <Route path={`${this.props.match.path}/:gameId`}>
-            <Game />
+            <Game
+              isOwner={this.state.isGameOwner}
+              ownerId={this.state.ownerId}
+            />
           </Route>
           <Route path={`${this.props.match.path}`}>
             <h3>Please select a room or create on.</h3>
@@ -62,11 +70,31 @@ class Home extends React.Component {
   }
 
   createRoom = () => {
-    const gameRef = ref.child(PATH_CONST.INTRUDERS);
+    // Create a new game room in Firebase
+    const gameRef = ref.child(PATH_CONST.DICTIONARY);
     const newGame = gameRef.push({
-      name: "New Intruder Game",
+      name: "New Dictionary Game",
+      status: {
+        state: "lobby",
+      },
+      players: {},
     });
 
+    // Add the room owner as player
+    const playersRef = ref.child(
+      `${PATH_CONST.DICTIONARY}/${newGame.key}/${PATH_CONST.PLAYERS}`
+    );
+    const owner = playersRef.push({
+      name: "Select a name",
+      isOwner: true,
+      points: 0,
+    });
+
+    this.setState((state) => {
+      return { ...state, isGameOwner: true, ownerId: owner.key };
+    });
+
+    // Move to game lobby
     this.props.history.push(`${this.props.match.path}/${newGame.key}`);
   };
 }

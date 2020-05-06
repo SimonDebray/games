@@ -17,6 +17,8 @@ class Home extends React.Component {
     gameList
       .on("value", (snapshot) => {
         const val = snapshot.val();
+        if (!val) return;
+
         const blindTestGames = Object.keys(val).map((key) => {
           return { ...val[key], key };
         });

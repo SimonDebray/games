@@ -7,6 +7,7 @@ import AppBar from "@material-ui/core/AppBar";
 import Typography from "@material-ui/core/Typography";
 import BlindTestHome from "./components/blindTest/home";
 import IntruderHome from "./components/intruder/home";
+import DictionaryHome from "./components/dictionary/home";
 import { NAV_CONST } from "./constants/nav";
 
 class App extends React.Component {
@@ -35,6 +36,14 @@ class App extends React.Component {
                 >
                   Intruder
                 </Link>
+
+                <Link
+                  variant="button"
+                  color="textPrimary"
+                  to={NAV_CONST.DICTIONARY}
+                >
+                  Dictionary
+                </Link>
               </nav>
             </Toolbar>
           </AppBar>
@@ -46,6 +55,9 @@ class App extends React.Component {
           </Route>
           <Route path={NAV_CONST.INTRUDER}>
             <IntruderHome />
+          </Route>
+          <Route path={NAV_CONST.DICTIONARY}>
+            <DictionaryHome />
           </Route>
         </Switch>
       </div>
