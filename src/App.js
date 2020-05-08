@@ -21,21 +21,6 @@ class App extends React.Component {
                 <Link to="/">Games</Link>
               </Typography>
               <nav>
-                <Link
-                  variant="button"
-                  color="textPrimary"
-                  to={NAV_CONST.BLIND_TEST}
-                >
-                  Blind Tests
-                </Link>
-
-                <Link
-                  variant="button"
-                  color="textPrimary"
-                  to={NAV_CONST.INTRUDER}
-                >
-                  Intruder
-                </Link>
 
                 <Link
                   variant="button"

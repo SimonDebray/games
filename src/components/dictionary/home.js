@@ -14,7 +14,7 @@ class Home extends React.Component {
 
   componentDidMount() {
     // List all available game room
-    const gameList = ref.child(PATH_CONST.DICTIONARY);
+    const gameList = ref.child(PATH_CONST.DICTIONARIES);
 
     gameList
       .on("value", (snapshot) => {
@@ -36,7 +36,7 @@ class Home extends React.Component {
   render() {
     return (
       <div>
-        <h2>Intruder</h2>
+        <h2>Dictionary</h2>
         {/* The Topics page has its own <Switch> with more routes
           that build on the /topics URL path. You can think of the
           2nd <Route> here as an "index" page for all topics, or
@@ -70,24 +70,29 @@ class Home extends React.Component {
   }
 
   createRoom = () => {
+    const room = prompt("Please enter the room name", "New Dictionary Game");
+
     // Create a new game room in Firebase
-    const gameRef = ref.child(PATH_CONST.DICTIONARY);
+    const gameRef = ref.child(PATH_CONST.DICTIONARIES);
     const newGame = gameRef.push({
-      name: "New Dictionary Game",
+      name: room,
       status: {
         state: "lobby",
       },
       players: {},
     });
 
+    const name = prompt("Please enter your name", "Harry Potter");
+
     // Add the room owner as player
     const playersRef = ref.child(
-      `${PATH_CONST.DICTIONARY}/${newGame.key}/${PATH_CONST.PLAYERS}`
+      `${PATH_CONST.DICTIONARIES}/${newGame.key}/${PATH_CONST.PLAYERS}`
     );
     const owner = playersRef.push({
-      name: "Select a name",
+      name,
       isOwner: true,
       points: 0,
+      responses: [],
     });
 
     this.setState((state) => {
