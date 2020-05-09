@@ -2,9 +2,10 @@ import React from "react";
 import { Switch, withRouter, Link } from "react-router-dom";
 import { Route } from "react-router-dom";
 import Game from "./game";
-import Button from "@material-ui/core/Button";
+import { MyButton } from "../styled/styled";
 import { ref } from "../../firebase/main";
 import { PATH_CONST } from "../../constants/firebase";
+import {GAMES_CONST} from "../../constants/games";
 
 class Home extends React.Component {
   state = {
@@ -49,20 +50,27 @@ class Home extends React.Component {
             />
           </Route>
           <Route path={`${this.props.match.path}`}>
-            <h3>Please select a room or create on.</h3>
+            <h3>Available rooms:</h3>
             <ul>
               {this.state.games.map((value, index) => {
-                return (
-                  <li key={index}>
-                    <Link to={`${this.props.match.path}/${value.key}`}>
-                      {value.name}
-                    </Link>
-                  </li>
-                );
+                if (value.status.state === GAMES_CONST.LOBBY || value.status.step === GAMES_CONST.SHOW) {
+                  return (
+                      <li key={index}>
+                        <Link to={`${this.props.match.path}/${value.key}`}>
+                          {value.name}
+                        </Link>
+                      </li>
+                  );
+                }
+                else {
+                  return (
+                      ''
+                  )
+                }
               })}
             </ul>
 
-            <Button onClick={this.createRoom}>Create room</Button>
+            <MyButton onClick={this.createRoom}>Create room</MyButton>
           </Route>
         </Switch>
       </div>
@@ -78,6 +86,8 @@ class Home extends React.Component {
       name: room,
       status: {
         state: "lobby",
+        round: 0,
+        step: "",
       },
       players: {},
     });

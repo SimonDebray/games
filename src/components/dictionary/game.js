@@ -1,32 +1,47 @@
-import { Link, Route, withRouter } from "react-router-dom";
+import { withRouter } from "react-router-dom";
 import React from "react";
 import { ref } from "../../firebase/main";
 import { PATH_CONST } from "../../constants/firebase";
-import Button from "@material-ui/core/Button";
+import { MyButton } from "../styled/styled";
 import TextField from "@material-ui/core/TextField";
 import { GAMES_CONST, TRASH_CONSTS } from "../../constants/games";
 import { shuffle } from "../../utils/utilities";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import RadioGroup from "@material-ui/core/RadioGroup";
 import Radio from "@material-ui/core/Radio";
+import { withStyles } from '@material-ui/core/styles';
 
-class BlindTestGame extends React.Component {
+const styles = {
+  root: {
+    padding: '0 30px',
+  },
+};
+
+class DictionaryGame extends React.Component {
   state = {
     listeners: {},
     clientId: "",
     game: {
-      players: {},
-      status: {},
+      players: {
+        responses: [],
+        votes: [],
+      },
+      status: {
+        state: "",
+        round: 0,
+        step: "",
+      },
     },
     response: "",
     vote: "",
   };
 
   componentDidMount() {
+    console.log(this.props);
     if (this.props.isOwner) {
       // Player already exist as owner
       this.setState((state) => {
-        return { ...state, clientId: this.props.ownerId };
+        return { clientId: this.props.ownerId };
       });
     } else {
       const name = prompt("Please enter your name", "Harry Potter");
@@ -42,7 +57,7 @@ class BlindTestGame extends React.Component {
       });
 
       this.setState((state) => {
-        return { ...state, clientId: client.key };
+        return { clientId: client.key };
       });
     }
 
@@ -56,7 +71,7 @@ class BlindTestGame extends React.Component {
         const game = snapshot.val();
 
         this.setState((state) => {
-          return { ...state, game };
+          return { game };
         });
       })
       .bind(this);
@@ -64,22 +79,53 @@ class BlindTestGame extends React.Component {
     // Keep listener in memory to remove it on unmount event
     this.setState((state) => {
       return {
-        ...state,
         listeners: { ...state.listeners, gameRef: gameRef },
       };
     });
   }
 
   render() {
-    let startGameButton = "",
-      game = "";
+    let gameOwnerCTAS = "",
+      game = "",
+      playerList = "";
 
-    if (this.props.isOwner) {
-      if (this.state.game.status.state === GAMES_CONST.LOBBY) {
-        startGameButton = <Button onClick={this.startGame}>Start</Button>;
-      } else if (this.state.game.status.step === GAMES_CONST.SHOW) {
-        startGameButton = <Button onClick={this.nextRound}>Next Round</Button>;
-      }
+    if (
+      this.props.isOwner &&
+      (this.state.game.status.state === GAMES_CONST.LOBBY ||
+        this.state.game.status.step === GAMES_CONST.SHOW)
+    ) {
+      gameOwnerCTAS = (
+        < MyButton onClick={this.nextRound}>
+          {this.state.game.status.state === GAMES_CONST.LOBBY
+            ? "Start"
+            : "Next round"}
+        </MyButton>
+      );
+    }
+
+    if (
+      this.state.game &&
+      (this.state.game.status.state === GAMES_CONST.LOBBY ||
+        this.state.game.status.step === GAMES_CONST.SHOW)
+    ) {
+      playerList = (
+        <div>
+          <h4>Players</h4>
+          <ul id={"playerList"}>
+            {Object.keys(this.state.game.players).map((key, index) => {
+              return (
+                <li key={index}>
+                  <span>
+                    {this.state.game.players[key].name}{" "}
+                    {key === this.state.clientId ? "(me)" : ""}
+                  </span>
+                  <span>{this.state.game.players[key].points} Points</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      );
     }
 
     if (
@@ -131,14 +177,14 @@ class BlindTestGame extends React.Component {
             <p>Time left: {this.state.counter}</p>
 
             <RadioGroup
-              aria-label="gender"
+              aria-label="Vote"
               name="vote"
               value={this.state.vote}
               onChange={this.voteChange}
             >
               {this.state.currentRoundResponse &&
                 this.state.currentRoundResponse.map((response, index) => {
-                  if (response.key === this.state.clientId) return '';
+                  if (response.key === this.state.clientId) return "";
                   return (
                     <FormControlLabel
                       key={index}
@@ -149,7 +195,7 @@ class BlindTestGame extends React.Component {
                   );
                 })}
             </RadioGroup>
-            <Button onClick={this.sendVote}>Vote</Button>
+            <MyButton onClick={this.sendVote}>Vote</MyButton>
           </div>
         );
       }
@@ -179,8 +225,6 @@ class BlindTestGame extends React.Component {
         </div>
       );
     } else if (
-      this.state &&
-      this.state.game &&
       this.state.game.status.state === "started" &&
       this.state.game.status.word
     ) {
@@ -196,43 +240,21 @@ class BlindTestGame extends React.Component {
             onChange={this.updateResponse}
             multiline={true}
           />
-          <Button onClick={this.sendResponse}>Done</Button>
+          <MyButton onClick={this.sendResponse}>Submit</MyButton>
         </div>
       );
     }
 
     return (
-      <div>
-        <h3>Game: {this.props.match.params.gameId}</h3>
-        <h4>Players</h4>
-        <ul>
-          {(this.state.game && (this.state.game.status.state === GAMES_CONST.LOBBY || this.state.game.status.step === GAMES_CONST.SHOW)) &&
-            Object.keys(this.state.game.players).map((key, index) => {
-              return (
-                <li key={index}>
-                  {this.state.game.players[key].name} points -{" "}
-                  {this.state.game.players[key].points}
-                  {key === this.state.clientId ? "(me)" : ""}
-                </li>
-              );
-            })}
-        </ul>
+      <div className={this.props.classes.root}>
+        {playerList}
 
-        {startGameButton}
         {game}
+
+        {gameOwnerCTAS}
       </div>
     );
   }
-
-  startGame = () => {
-    const stateRef = ref.child(
-      `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.STATUS}/${PATH_CONST.STATE}`
-    );
-
-    this.startRound(1);
-
-    stateRef.set("started");
-  };
 
   nextRound = () => {
     this.startRound(this.state.game.status.round + 1);
@@ -257,7 +279,14 @@ class BlindTestGame extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.STATUS}`
     );
 
-    gameStatusRef.set({
+    console.log({
+      state: "started",
+      round: index,
+      step: GAMES_CONST.CREATE,
+      word,
+    });
+
+    await gameStatusRef.set({
       state: "started",
       round: index,
       step: GAMES_CONST.CREATE,
@@ -269,7 +298,7 @@ class BlindTestGame extends React.Component {
     const response = e.target.value;
 
     this.setState((state) => {
-      return { ...state, response };
+      return { response };
     });
   };
 
@@ -277,7 +306,7 @@ class BlindTestGame extends React.Component {
     const vote = e.target.value;
 
     this.setState((state) => {
-      return { ...state, vote };
+      return { vote };
     });
   };
 
@@ -290,7 +319,7 @@ class BlindTestGame extends React.Component {
       console.log("NEW ROUND");
 
       // Start timer
-      this.startTimer(120);
+      this.startTimer(5);
     }
 
     if (
@@ -343,17 +372,17 @@ class BlindTestGame extends React.Component {
 
         this.setState((state) => {
           return {
-            ...state,
             currentRoundResponse: shuffle(choices),
           };
         });
 
-        this.startTimer(120);
+        console.log("Start vote Timer");
+        this.startTimer(5);
       }
     }
 
     if (
-        this.state.game.players[this.state.clientId] &&
+      this.state.game.players[this.state.clientId] &&
       this.state.game.players[this.state.clientId].votes &&
       this.state.game.players[this.state.clientId].votes[
         this.state.game.status.round
@@ -365,9 +394,7 @@ class BlindTestGame extends React.Component {
       Object.keys(this.state.game.players).forEach((playerId) => {
         if (
           !this.state.game.players[playerId].votes ||
-          !this.state.game.players[playerId].votes[
-            this.state.game.status.round
-          ]
+          !this.state.game.players[playerId].votes[this.state.game.status.round]
         ) {
           allVoted = false;
         }
@@ -384,18 +411,22 @@ class BlindTestGame extends React.Component {
   }
 
   startTimer = (startTime) => {
-    this.setState((state) => {
-      return { ...state, counter: startTime };
-    });
+    // Clear old timer if exist
+    const oldTimer = this.state.timer;
+    if (oldTimer) {
+      clearInterval(oldTimer);
+    }
 
     this.setState((state) => {
+      return { counter: startTime };
+    });
+
+    setTimeout(() => {
       const timer = setInterval(() => {
         let counter = this.state.counter;
 
         if (counter === 0) {
           if (this.state.game.status.step === GAMES_CONST.CREATE) {
-            console.log("END ROUND");
-            // SEND INPUT TO FB
             this.sendResponse();
           } else if (this.state.game.status.step === GAMES_CONST.VOTE) {
             this.sendVote();
@@ -406,11 +437,14 @@ class BlindTestGame extends React.Component {
         }
 
         this.setState((state) => {
-          return { ...state, counter: counter - 1 };
+          return { counter: counter - 1 };
         });
       }, 1000);
-      return { ...state, timer };
-    });
+
+      this.setState((state) => {
+        return { timer };
+      });
+    }, 500);
   };
 
   sendResponse = () => {
@@ -422,29 +456,26 @@ class BlindTestGame extends React.Component {
       this.state.response !== "" ? this.state.response : TRASH_CONSTS[0]
     );
 
-    clearTimeout(this.state.timer);
+    clearInterval(this.state.timer);
 
     this.setState((state) => {
-      return { ...state, response: "" };
+      return { response: "" };
     });
   };
 
   sendVote = () => {
-    const responseObject = this.state.currentRoundResponse.find((response) => {
-      console.log(response);
-      console.log(this.state.vote);
-      return response.key === this.state.vote;
-    });
-
-    let bonus = 1;
-    let player = "";
-
-    if (responseObject.isGoodAnswer) {
-      player = this.state.clientId;
-      bonus = 3;
-    } else {
-      player = responseObject.key;
-    }
+    const responseObject = this.state.vote
+        ? this.state.currentRoundResponse.find(
+            (response) => response.key === this.state.vote
+          )
+        : this.state.currentRoundResponse.find(
+            (response) =>
+              !response.isGoodAnswer && response.key !== this.state.clientId
+          ),
+      bonus = responseObject.isGoodAnswer ? 3 : 1,
+      player = responseObject.isGoodAnswer
+        ? this.state.clientId
+        : responseObject.key;
 
     const pointsRef = ref.child(
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${player}/${PATH_CONST.POINTS}`
@@ -456,14 +487,18 @@ class BlindTestGame extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${this.state.clientId}/${PATH_CONST.VOTES}/${this.state.game.status.round}`
     );
 
-    voteRef.set(true);
+    voteRef.set(responseObject.key);
 
-    clearTimeout(this.state.timer);
+    clearInterval(this.state.timer);
 
     this.setState((state) => {
-      return { ...state, vote: "" };
+      return { vote: "" };
     });
   };
+
+  componentDidCatch(error, errorInfo) {
+    console.log(error, errorInfo);
+  }
 
   componentWillUnmount() {
     if (
@@ -491,4 +526,4 @@ class BlindTestGame extends React.Component {
   }
 }
 
-export default withRouter(BlindTestGame);
+export default withRouter(withStyles(styles)(DictionaryGame));
