@@ -9,11 +9,19 @@ import { shuffle } from "../../utils/utilities";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import RadioGroup from "@material-ui/core/RadioGroup";
 import Radio from "@material-ui/core/Radio";
-import { withStyles } from '@material-ui/core/styles';
+import { withStyles } from "@material-ui/core/styles";
+import Typography from "@material-ui/core/Typography";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemAvatar from "@material-ui/core/ListItemAvatar";
+import Avatar from "@material-ui/core/Avatar";
+import List from "@material-ui/core/List";
+import ListItemText from "@material-ui/core/ListItemText";
+import ListItemSecondaryAction from "@material-ui/core/ListItemSecondaryAction";
+import Container from "@material-ui/core/Container";
 
 const styles = {
   root: {
-    padding: '0 30px',
+    padding: "0 30px",
   },
 };
 
@@ -37,7 +45,6 @@ class DictionaryGame extends React.Component {
   };
 
   componentDidMount() {
-    console.log(this.props);
     if (this.props.isOwner) {
       // Player already exist as owner
       this.setState((state) => {
@@ -51,7 +58,7 @@ class DictionaryGame extends React.Component {
         `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}`
       );
       const client = playerRef.push({
-        name: name,
+        name: name || 'Anonymous',
         responses: [],
         points: 0,
       });
@@ -95,7 +102,7 @@ class DictionaryGame extends React.Component {
         this.state.game.status.step === GAMES_CONST.SHOW)
     ) {
       gameOwnerCTAS = (
-        < MyButton onClick={this.nextRound}>
+        <MyButton onClick={this.nextRound}>
           {this.state.game.status.state === GAMES_CONST.LOBBY
             ? "Start"
             : "Next round"}
@@ -108,22 +115,40 @@ class DictionaryGame extends React.Component {
       (this.state.game.status.state === GAMES_CONST.LOBBY ||
         this.state.game.status.step === GAMES_CONST.SHOW)
     ) {
+      const players = Object.keys(this.state.game.players)
+        .map((key) => {
+          return { ...this.state.game.players[key], key };
+        })
+        .sort((a, b) => b.points - a.points);
+
       playerList = (
         <div>
-          <h4>Players</h4>
-          <ul id={"playerList"}>
-            {Object.keys(this.state.game.players).map((key, index) => {
-              return (
-                <li key={index}>
-                  <span>
-                    {this.state.game.players[key].name}{" "}
-                    {key === this.state.clientId ? "(me)" : ""}
-                  </span>
-                  <span>{this.state.game.players[key].points} Points</span>
-                </li>
-              );
-            })}
-          </ul>
+          <Typography variant="h4" align="left" color="textSecondary">
+            Players
+          </Typography>
+          <Container maxWidth={"xs"} alignItems="left">
+            <List>
+              {players.map((player, index) => {
+                return (
+                  <ListItem key={index} alignItems="center">
+                    <ListItemAvatar>
+                      <Avatar alt={player.name}>
+                        {player.name.substring(0, 1).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={`${player.name} ${
+                        player.key === this.state.clientId ? "(me)" : ""
+                      }`}
+                    />
+                    <ListItemSecondaryAction>
+                      {player.points} Points
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Container>
         </div>
       );
     }
@@ -187,6 +212,7 @@ class DictionaryGame extends React.Component {
                   if (response.key === this.state.clientId) return "";
                   return (
                     <FormControlLabel
+                      style={{ margin: "10px 0" }}
                       key={index}
                       value={response.key}
                       control={<Radio />}
@@ -200,48 +226,92 @@ class DictionaryGame extends React.Component {
         );
       }
     } else if (this.state.game.status.step === GAMES_CONST.SHOW) {
+      const votesByCreator = Object.keys(this.state.game.players).reduce((obj, key) => {
+        if (obj[this.state.game.players[key].votes[this.state.game.status.round]]) {
+          obj[this.state.game.players[key].votes[this.state.game.status.round]].push(key);
+        }
+        else {
+          obj[this.state.game.players[key].votes[this.state.game.status.round]] = [key];
+        }
+        return obj
+      }, {});
+
       game = (
-        <div>
-          <h4>Round: {this.state.game.status.round}</h4>
-          <h4>Word: {this.state.game.status.word.word}</h4>
+        <Container maxWidth={"md"}>
+          <Typography variant="h4" align="left">
+            Round: <b>{this.state.game.status.round}</b>
+          </Typography>
+          <Typography variant="h5" align="left">
+            Word: <b>{this.state.game.status.word.word}</b>
+          </Typography>
 
-          <p>Result</p>
+          <Typography variant={"subtitle1"} color="textSecondary">
+            Round result
+          </Typography>
 
-          <ul>
+          <List>
             {this.state.currentRoundResponse &&
               this.state.currentRoundResponse.map((response, index) => {
                 return (
-                  <li key={index}>
-                    {response.response}
-                    <b>
-                      {response.isGoodAnswer
-                        ? " CORRECT"
-                        : ` by ${this.state.game.players[response.key].name}`}
-                    </b>
-                  </li>
+                  <ListItem key={index} alignItems="center">
+                    <ListItemText
+                      primary={response.response}
+                      secondary={
+                        response.isGoodAnswer
+                          ? " CORRECT"
+                          : ` by ${this.state.game.players[response.key].name}`
+                      }
+                    />
+                    <ListItemSecondaryAction>
+                      {(votesByCreator && votesByCreator[response.key]) &&
+                        votesByCreator[response.key].map(
+                          (key, index) => {
+                            return (
+                              <ListItemAvatar key={index}>
+                                <Avatar alt={this.state.game.players[key].name}>
+                                  {this.state.game.players[key].name.substring(0, 1).toUpperCase()}
+                                </Avatar>
+                              </ListItemAvatar>
+                            );
+                          }
+                        )}
+                    </ListItemSecondaryAction>
+                  </ListItem>
                 );
               })}
-          </ul>
-        </div>
+          </List>
+          <ul></ul>
+        </Container>
       );
     } else if (
       this.state.game.status.state === "started" &&
       this.state.game.status.word
     ) {
       game = (
-        <div>
-          <h4>Round: {this.state.game.status.round}</h4>
-          <h4>Word: {this.state.game.status.word.word}</h4>
+        <Container maxWidth={"md"}>
+          <Typography variant="h4" align="left">
+            Round: <b>{this.state.game.status.round}</b>
+          </Typography>
+          <Typography variant="h5" align="left">
+            Word: <b>{this.state.game.status.word.word}</b>
+          </Typography>
 
-          <p>Find a definition</p>
-          <p>Time left: {this.state.counter}</p>
+          <Typography variant={"subtitle1"} color="textSecondary">
+            Find a definition
+          </Typography>
+          <Typography variant={"subtitle1"} color="textSecondary">
+            Time left: <b>{this.state.counter}</b>
+          </Typography>
           <TextField
+            style={{ margin: "20px 0" }}
+            label={"Definition"}
+            fullWidth={true}
             value={this.state.response}
             onChange={this.updateResponse}
             multiline={true}
           />
           <MyButton onClick={this.sendResponse}>Submit</MyButton>
-        </div>
+        </Container>
       );
     }
 
@@ -279,13 +349,6 @@ class DictionaryGame extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.STATUS}`
     );
 
-    console.log({
-      state: "started",
-      round: index,
-      step: GAMES_CONST.CREATE,
-      word,
-    });
-
     await gameStatusRef.set({
       state: "started",
       round: index,
@@ -315,11 +378,8 @@ class DictionaryGame extends React.Component {
       this.state.game.status.round === prevState.game.status.round + 1 ||
       (this.state.game.status.round === 1 && !prevState.game.status.round)
     ) {
-      // New round start
-      console.log("NEW ROUND");
-
       // Start timer
-      this.startTimer(5);
+      this.startTimer(120);
     }
 
     if (
@@ -376,8 +436,7 @@ class DictionaryGame extends React.Component {
           };
         });
 
-        console.log("Start vote Timer");
-        this.startTimer(5);
+        this.startTimer(120);
       }
     }
 
@@ -487,7 +546,7 @@ class DictionaryGame extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${this.state.clientId}/${PATH_CONST.VOTES}/${this.state.game.status.round}`
     );
 
-    voteRef.set(responseObject.key);
+    voteRef.set(responseObject.key === this.state.clientId ? 'CORRECT' : responseObject.key);
 
     clearInterval(this.state.timer);
 
