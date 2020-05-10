@@ -18,6 +18,7 @@ import List from "@material-ui/core/List";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItemSecondaryAction from "@material-ui/core/ListItemSecondaryAction";
 import Container from "@material-ui/core/Container";
+import { NAV_CONST } from "../../constants/nav";
 
 const styles = {
   root: {
@@ -45,26 +46,23 @@ class DictionaryGame extends React.Component {
   };
 
   componentDidMount() {
+    this.setState((state) => {
+      return { handler };
+    });
+    const handler = this.handleDisconnection;
+    const self = this;
+
+    window.addEventListener("beforeunload", function (event) {
+      console.log(event);
+      event.returnValue = "Hellooww";
+
+      handler(self);
+    });
+
     if (this.props.isOwner) {
       // Player already exist as owner
       this.setState((state) => {
         return { clientId: this.props.ownerId };
-      });
-    } else {
-      const name = prompt("Please enter your name", "Harry Potter");
-
-      // Create a player
-      const playerRef = ref.child(
-        `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}`
-      );
-      const client = playerRef.push({
-        name: name || 'Anonymous',
-        responses: [],
-        points: 0,
-      });
-
-      this.setState((state) => {
-        return { clientId: client.key };
       });
     }
 
@@ -98,6 +96,7 @@ class DictionaryGame extends React.Component {
 
     if (
       this.props.isOwner &&
+      this.state.game &&
       (this.state.game.status.state === GAMES_CONST.LOBBY ||
         this.state.game.status.step === GAMES_CONST.SHOW)
     ) {
@@ -112,6 +111,7 @@ class DictionaryGame extends React.Component {
 
     if (
       this.state.game &&
+      this.state.game.status &&
       (this.state.game.status.state === GAMES_CONST.LOBBY ||
         this.state.game.status.step === GAMES_CONST.SHOW)
     ) {
@@ -126,7 +126,7 @@ class DictionaryGame extends React.Component {
           <Typography variant="h4" align="left" color="textSecondary">
             Players
           </Typography>
-          <Container maxWidth={"xs"} alignItems="left">
+          <Container maxWidth={"xs"}>
             <List>
               {players.map((player, index) => {
                 return (
@@ -154,6 +154,9 @@ class DictionaryGame extends React.Component {
     }
 
     if (
+      this.state.clientId &&
+      this.state.game.status &&
+      this.state.game.status.step &&
       this.state.game.status.step === GAMES_CONST.CREATE &&
       this.state.game.players[this.state.clientId].responses &&
       this.state.game.players[this.state.clientId].responses[
@@ -177,8 +180,14 @@ class DictionaryGame extends React.Component {
           </p>
         </div>
       );
-    } else if (this.state.game.status.step === GAMES_CONST.VOTE) {
+    } else if (
+      this.state.game &&
+      this.state.game.status &&
+      this.state.game.status.step === GAMES_CONST.VOTE
+    ) {
       if (
+        this.state.clientId &&
+        this.state.game &&
         this.state.game.players[this.state.clientId].votes &&
         this.state.game.players[this.state.clientId].votes[
           this.state.game.status.round
@@ -225,16 +234,35 @@ class DictionaryGame extends React.Component {
           </div>
         );
       }
-    } else if (this.state.game.status.step === GAMES_CONST.SHOW) {
-      const votesByCreator = Object.keys(this.state.game.players).reduce((obj, key) => {
-        if (obj[this.state.game.players[key].votes[this.state.game.status.round]]) {
-          obj[this.state.game.players[key].votes[this.state.game.status.round]].push(key);
-        }
-        else {
-          obj[this.state.game.players[key].votes[this.state.game.status.round]] = [key];
-        }
-        return obj
-      }, {});
+    } else if (
+      this.state.game &&
+      this.state.game.status &&
+      this.state.game.status.step === GAMES_CONST.SHOW
+    ) {
+      const votesByCreator = Object.keys(this.state.game.players).reduce(
+        (obj, key) => {
+          if (
+            this.state.game.players[key].votes &&
+            this.state.game.players[key] &&
+            obj[
+              this.state.game.players[key].votes[this.state.game.status.round]
+            ]
+          ) {
+            obj[
+              this.state.game.players[key].votes[this.state.game.status.round]
+            ].push(key);
+          } else if (
+            this.state.game.players[key].votes &&
+            this.state.game.players[key]
+          ) {
+            obj[
+              this.state.game.players[key].votes[this.state.game.status.round]
+            ] = [key];
+          }
+          return obj;
+        },
+        {}
+      );
 
       game = (
         <Container maxWidth={"md"}>
@@ -262,28 +290,32 @@ class DictionaryGame extends React.Component {
                           : ` by ${this.state.game.players[response.key].name}`
                       }
                     />
-                    <ListItemSecondaryAction>
-                      {(votesByCreator && votesByCreator[response.key]) &&
-                        votesByCreator[response.key].map(
-                          (key, index) => {
-                            return (
-                              <ListItemAvatar key={index}>
-                                <Avatar alt={this.state.game.players[key].name}>
-                                  {this.state.game.players[key].name.substring(0, 1).toUpperCase()}
-                                </Avatar>
-                              </ListItemAvatar>
-                            );
-                          }
-                        )}
+                    <ListItemSecondaryAction
+                      style={{ display: "flex", flexDirection: "row" }}
+                    >
+                      {votesByCreator &&
+                        votesByCreator[response.key] &&
+                        votesByCreator[response.key].map((key, index) => {
+                          return (
+                            <ListItemAvatar key={index}>
+                              <Avatar alt={this.state.game.players[key].name}>
+                                {this.state.game.players[key].name
+                                  .substring(0, 1)
+                                  .toUpperCase()}
+                              </Avatar>
+                            </ListItemAvatar>
+                          );
+                        })}
                     </ListItemSecondaryAction>
                   </ListItem>
                 );
               })}
           </List>
-          <ul></ul>
         </Container>
       );
     } else if (
+      this.state.game &&
+      this.state.game.status &&
       this.state.game.status.state === "started" &&
       this.state.game.status.word
     ) {
@@ -374,6 +406,36 @@ class DictionaryGame extends React.Component {
   };
 
   componentDidUpdate(prevProps, prevState, snapshot) {
+    if (!this.state.game || !this.state.game.status) {
+      // Game no longer exist
+      this.props.history.push(`${NAV_CONST.DICTIONARY}`);
+      return;
+    }
+
+    if (
+      !this.state.clientId &&
+      this.state.game.status.state &&
+      (this.state.game.status.step === GAMES_CONST.SHOW ||
+        this.state.game.status.state === GAMES_CONST.LOBBY ||
+        this.state.game.status.step === GAMES_CONST.CREATE)
+    ) {
+      const name = prompt("Please enter your name", "Harry Potter");
+
+      // Create a player
+      const playerRef = ref.child(
+        `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}`
+      );
+      const client = playerRef.push({
+        name: name || "Anonymous",
+        responses: [],
+        points: 0,
+      });
+
+      this.setState((state) => {
+        return { clientId: client.key };
+      });
+    }
+
     if (
       this.state.game.status.round === prevState.game.status.round + 1 ||
       (this.state.game.status.round === 1 && !prevState.game.status.round)
@@ -383,6 +445,7 @@ class DictionaryGame extends React.Component {
     }
 
     if (
+      this.state.clientId &&
       this.state.game.status.word &&
       this.state.game.status.state === GAMES_CONST.STARTED &&
       this.state.game.players[this.state.clientId] &&
@@ -441,6 +504,7 @@ class DictionaryGame extends React.Component {
     }
 
     if (
+      this.state.clientId &&
       this.state.game.players[this.state.clientId] &&
       this.state.game.players[this.state.clientId].votes &&
       this.state.game.players[this.state.clientId].votes[
@@ -546,7 +610,11 @@ class DictionaryGame extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${this.state.clientId}/${PATH_CONST.VOTES}/${this.state.game.status.round}`
     );
 
-    voteRef.set(responseObject.key === this.state.clientId ? 'CORRECT' : responseObject.key);
+    voteRef.set(
+      responseObject.key === this.state.clientId
+        ? "CORRECT"
+        : responseObject.key
+    );
 
     clearInterval(this.state.timer);
 
@@ -560,12 +628,20 @@ class DictionaryGame extends React.Component {
   }
 
   componentWillUnmount() {
+    this.handleDisconnection(this);
+  }
+
+  handleDisconnection = (self) => {
+    if (self.state.handler) {
+      window.removeEventListener("beforeunload", self.state.handler);
+    }
+
     if (
-      this.state.game.players &&
-      Object.keys(this.state.game.players).length === 1
+      self.state.game.players &&
+      Object.keys(self.state.game.players).length === 1
     ) {
       ref
-        .child(`${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}`)
+        .child(`${PATH_CONST.DICTIONARIES}/${self.props.match.params.gameId}`)
         .remove()
         .then(() => console.log("Game removed success"));
     } else {
@@ -573,16 +649,16 @@ class DictionaryGame extends React.Component {
 
       ref
         .child(
-          `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${this.state.clientId}`
+          `${PATH_CONST.DICTIONARIES}/${self.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${self.state.clientId}`
         )
         .remove()
         .then(() => console.log("Player removed success"));
     }
 
-    Object.keys(this.state.listeners).forEach((key) => {
-      this.state.listeners[key].off();
+    Object.keys(self.state.listeners).forEach((key) => {
+      self.state.listeners[key].off();
     });
-  }
+  };
 }
 
 export default withRouter(withStyles(styles)(DictionaryGame));
