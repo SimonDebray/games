@@ -83,8 +83,8 @@ class Home extends React.Component {
             </Container>
             <Container maxWidth="md">
               <Typography
-                  variant="h4"
-                  align="left"
+                variant="h4"
+                align="left"
                 color="textSecondary"
                 paragraph
               >
@@ -189,7 +189,7 @@ class Home extends React.Component {
     // Create a new game room in Firebase
     const gameRef = ref.child(PATH_CONST.DICTIONARIES);
     const newGame = gameRef.push({
-      name: room || 'Dictionary',
+      name: room || "Dictionary",
       status: {
         state: "lobby",
         round: 0,
@@ -206,7 +206,7 @@ class Home extends React.Component {
       `${PATH_CONST.DICTIONARIES}/${newGame.key}/${PATH_CONST.PLAYERS}`
     );
     const owner = playersRef.push({
-      name: name || 'Creator (Tyler)',
+      name: name || "Creator (Tyler)",
       isOwner: true,
       points: 0,
       responses: [],

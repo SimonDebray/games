@@ -1,4 +1,4 @@
-import { Link, Route, withRouter } from "react-router-dom";
+import { withRouter } from "react-router-dom";
 import React from "react";
 import { ref } from "../../firebase/main";
 import { PATH_CONST } from "../../constants/firebase";

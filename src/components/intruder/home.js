@@ -1,5 +1,5 @@
 import React from "react";
-import { Switch, withRouter, Link } from "react-router-dom";
+import { Switch, withRouter } from "react-router-dom";
 import { Route } from "react-router-dom";
 import Game from "./game";
 import Button from "@material-ui/core/Button";

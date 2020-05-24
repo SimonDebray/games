@@ -45,18 +45,15 @@ class DictionaryGame extends React.Component {
     vote: "",
   };
 
+  constructor() {
+    super();
+
+    this.handleDisconnection = this.handleDisconnection.bind(this);
+  }
+
   componentDidMount() {
-    this.setState((state) => {
-      return { handler };
-    });
-    const handler = this.handleDisconnection;
-    const self = this;
-
-    window.addEventListener("beforeunload", function (event) {
-      console.log(event);
-      event.returnValue = "Hellooww";
-
-      handler(self);
+    window.addEventListener("beforeunload", async () => {
+      return await this.handleDisconnection();
     });
 
     if (this.props.isOwner) {
@@ -95,8 +92,10 @@ class DictionaryGame extends React.Component {
       playerList = "";
 
     if (
-      this.props.isOwner &&
       this.state.game &&
+      this.state.game.players &&
+      this.state.clientId &&
+      this.state.game.players[this.state.clientId].isOwner &&
       (this.state.game.status.state === GAMES_CONST.LOBBY ||
         this.state.game.status.step === GAMES_CONST.SHOW)
     ) {
@@ -287,7 +286,7 @@ class DictionaryGame extends React.Component {
                       secondary={
                         response.isGoodAnswer
                           ? " CORRECT"
-                          : ` by ${this.state.game.players[response.key].name}`
+                          : ` by ${this.state.game.players[response.key] ? this.state.game.players[response.key].name : 'Player has left the room'}`
                       }
                     />
                     <ListItemSecondaryAction
@@ -628,36 +627,62 @@ class DictionaryGame extends React.Component {
   }
 
   componentWillUnmount() {
-    this.handleDisconnection(this);
+    this.handleDisconnection().then(() => {
+      console.log("Unmount success");
+    });
   }
 
-  handleDisconnection = (self) => {
-    if (self.state.handler) {
-      window.removeEventListener("beforeunload", self.state.handler);
-    }
-
+  handleDisconnection = async () => {
     if (
-      self.state.game.players &&
-      Object.keys(self.state.game.players).length === 1
+      this.state.game.players &&
+      Object.keys(this.state.game.players).length === 1
     ) {
-      ref
-        .child(`${PATH_CONST.DICTIONARIES}/${self.props.match.params.gameId}`)
-        .remove()
-        .then(() => console.log("Game removed success"));
+      await ref
+        .child(`${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}`)
+        .remove();
     } else {
-      // TODO: Check for owner to transfer ownership
+      const wasOwner = !!this.state.game.players[this.state.clientId].isOwner;
+      console.log(wasOwner);
 
-      ref
+      const promises = [ref
         .child(
-          `${PATH_CONST.DICTIONARIES}/${self.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${self.state.clientId}`
+          `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}/${this.state.clientId}`
         )
-        .remove()
-        .then(() => console.log("Player removed success"));
+        .remove()];
+
+      // Transfer ownership to another player
+      if (wasOwner) {
+        const snap = (
+          await ref
+            .child(
+              `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${PATH_CONST.PLAYERS}`
+            )
+            .limitToFirst(1)
+            .once("value")
+        ).val();
+
+        const user = {
+          ...snap[Object.keys(snap)[0]],
+          isOwner: true,
+        };
+
+        promises.push(ref
+          .child(
+            `${PATH_CONST.DICTIONARIES}/${this.props.match.params.gameId}/${
+              PATH_CONST.PLAYERS
+            }/${Object.keys(snap)[0]}`
+          )
+          .update(user));
+      }
+
+      await Promise.all(promises)
     }
 
-    Object.keys(self.state.listeners).forEach((key) => {
-      self.state.listeners[key].off();
+    Object.keys(this.state.listeners).forEach((key) => {
+      this.state.listeners[key].off();
     });
+
+    return true;
   };
 }
 
